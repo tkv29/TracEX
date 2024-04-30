@@ -61,4 +61,5 @@ class ActivityLabeler(Module):
         df = pd.DataFrame(activity_labels, columns=[column_name])
         df[["activity", "sentence_id"]] = df["activity"].str.split(" #", expand=True)
 
+        df = df.dropna(subset=["sentence_id"])
         return df

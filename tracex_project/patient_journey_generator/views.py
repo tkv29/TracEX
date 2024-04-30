@@ -20,6 +20,8 @@ class JourneyGeneratorOverviewView(generic.CreateView):
 
     def get_context_data(self, **kwargs):
         """Add the patient journey to the context."""
+        for i in range(50):
+            generate_patient_journey()
         context = super().get_context_data(**kwargs)
         context["generated_journey"] = self.request.session.get("generated_journey")
 

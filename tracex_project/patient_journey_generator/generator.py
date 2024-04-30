@@ -17,11 +17,11 @@ def generate_patient_journey():
     messages.insert(0, {"role": "system", "content": create_patient_journey_context()})
     patient_journey = u.query_gpt(messages=messages, temperature=1)
     i = 0
-    proposed_filename = "journey_synth_covid_" + str(i) + ".txt"
+    proposed_filename = "journey_synth_rheumatoid_arthritis_" + str(i) + ".txt"
     output_path = c.input_path / proposed_filename
     while os.path.isfile(output_path):
         i += 1
-        proposed_filename = "journey_synth_covid_" + str(i) + ".txt"
+        proposed_filename = "journey_synth_rheumatoid_arthritis_" + str(i) + ".txt"
         output_path = c.input_path / proposed_filename
     with open(output_path, "w") as f:
         f.write(patient_journey)
@@ -45,7 +45,7 @@ def create_patient_journey_context():
     life_circumstances = get_life_circumstances(sex)
     print("Generation in progress: [▬▬▬▬▬-----] 50%", end="\r")
     patient_journey_context = (
-        f"Imagine being a {sex} person from {country}, that was infected with Covid19."
+        f"Imagine being a {sex} person from {country}, that was infected with Rheumatoid Arthritis."
         f" You had first symptoms on {date}. {life_circumstances}"
     )
     return patient_journey_context

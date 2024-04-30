@@ -15,6 +15,10 @@ from django.shortcuts import redirect
 from tracex.logic import utils
 from extraction.forms import JourneyForm, ResultForm, FilterForm
 from extraction.logic.orchestrator import Orchestrator, ExtractionConfiguration
+from patient_journey_generator.generator import generate_patient_journey
+from extraction.models import PatientJourney
+
+from tracex.logic import constants
 
 
 # necessary due to Windows error. see information for your os here:
@@ -22,6 +26,31 @@ from extraction.logic.orchestrator import Orchestrator, ExtractionConfiguration
 os.environ["PATH"] += os.pathsep + "C:/Program Files/Graphviz/bin/"
 
 IS_TEST = False  # Controls the presentation mode of the pipeline, set to False if you want to run the pipeline
+
+class BulkJourneyExtraction(generic.TemplateView):
+
+    template_name = "upload_journey.html"
+
+    def get_context_data(self, **kwargs):
+        for i in range(50):
+            patient_journey_name = "journey_synth_rheumatoid_arthritis_" + str(i)
+            patient_journey = PatientJourney.manager.get(
+                name=patient_journey_name
+            ).patient_journey
+            id = PatientJourney.manager.get(
+                name=patient_journey_name
+            ).id
+        
+            
+            configuration = ExtractionConfiguration(patient_journey=patient_journey, event_types=constants.EVENT_TYPES, locations=constants.LOCATIONS, activity_key="activity")
+            orchestrator = Orchestrator(configuration)
+            orchestrator.set_db_objects_id("patient_journey", id)
+            orchestrator.run(view=self)
+            orchestrator.save_results_to_db()
+        
+        return redirect(reverse_lazy("result"))
+
+
 
 
 class JourneyInputView(generic.CreateView):
@@ -107,34 +136,38 @@ class ResultView(generic.FormView):
         orchestrator = Orchestrator.get_instance()
         single_trace_df = orchestrator.get_data()
         activity_key = orchestrator.get_configuration().activity_key
-
-        # 1. Set the filter dictionary based on the activity key
-        match (activity_key):
-            case "activity":
-                filter_dict = {
-                    "attribute_location": orchestrator.get_configuration().locations,
-                    "event_type": orchestrator.get_configuration().event_types,
-                }
-            case "event_type":
-                filter_dict = {
+        filter_dict = {
                     "attribute_location": orchestrator.get_configuration().locations,
                     "concept:name": orchestrator.get_configuration().event_types,
                 }
-            case "attribute_location":
-                filter_dict = {
-                    "concept:name": orchestrator.get_configuration().locations,
-                    "event_type": orchestrator.get_configuration().event_types,
-                }
-            case _:
-                filter_dict = {}
+
+        # 1. Set the filter dictionary based on the activity key
+        # match (activity_key):
+        #     case "activity":
+        #         filter_dict = {
+        #             "attribute_location": orchestrator.get_configuration().locations,
+        #             "event_type": orchestrator.get_configuration().event_types,
+        #         }
+        #     case "event_type":
+        #         filter_dict = {
+        #             "attribute_location": orchestrator.get_configuration().locations,
+        #             "concept:name": orchestrator.get_configuration().event_types,
+        #         }
+        #     case "attribute_location":
+        #         filter_dict = {
+        #             "concept:name": orchestrator.get_configuration().locations,
+        #             "event_type": orchestrator.get_configuration().event_types,
+        #         }
+        #     case _:
+        #         filter_dict = {}
 
         # 2. Filter the single journey dataframe
-        single_trace_df = utils.Conversion.prepare_df_for_xes_conversion(
-            single_trace_df, activity_key
-        )
-        single_trace_df_filtered = utils.DataFrameUtilities.filter_dataframe(
-            single_trace_df, filter_dict
-        )
+        # single_trace_df = utils.Conversion.prepare_df_for_xes_conversion(
+        #     single_trace_df, activity_key
+        # )
+        # single_trace_df_filtered = utils.DataFrameUtilities.filter_dataframe(
+        #     single_trace_df, filter_dict
+        # )
 
         # 3. Append the single journey dataframe to the all traces dataframe
 
@@ -146,17 +179,17 @@ class ResultView(generic.FormView):
             all_traces_df = utils.Conversion.prepare_df_for_xes_conversion(
                 all_traces_df, activity_key
             )
-            utils.Conversion.align_df_datatypes(single_trace_df_filtered, all_traces_df)
-            all_traces_df = pd.concat(
-                [all_traces_df, single_trace_df_filtered],
-                ignore_index=True,
-                axis="rows",
-            )
+            # utils.Conversion.align_df_datatypes(single_trace_df_filtered, all_traces_df)
+            # all_traces_df = pd.concat(
+            #     [all_traces_df, single_trace_df_filtered],
+            #     ignore_index=True,
+            #     axis="rows",
+            # )
             all_traces_df_filtered = utils.DataFrameUtilities.filter_dataframe(
                 all_traces_df, filter_dict
             )
         else:
-            all_traces_df_filtered = single_trace_df_filtered
+            all_traces_df_filtered = "single_trace_df_filtered"
 
         # 4. Save all information in context to display on website
         context.update(
@@ -169,12 +202,12 @@ class ResultView(generic.FormView):
                     }
                 ),
                 "journey": orchestrator.get_configuration().patient_journey,
-                "dfg_img": utils.Conversion.create_dfg_from_df(
-                    single_trace_df_filtered
-                ),
-                "xes_html": utils.Conversion.create_html_from_xes(
-                    single_trace_df_filtered
-                ).getvalue(),
+                # "dfg_img": utils.Conversion.create_dfg_from_df(
+                #     single_trace_df_filtered
+                # ),
+                # "xes_html": utils.Conversion.create_html_from_xes(
+                #     single_trace_df_filtered
+                # ).getvalue(),
                 "all_dfg_img": utils.Conversion.create_dfg_from_df(
                     all_traces_df_filtered
                 ),
@@ -185,15 +218,15 @@ class ResultView(generic.FormView):
         )
 
         # 5 .Generate XES files
-        single_trace_xes = utils.Conversion.dataframe_to_xes(
-            single_trace_df_filtered, "single_trace.xes"
-        )
+        # single_trace_xes = utils.Conversion.dataframe_to_xes(
+        #     single_trace_df_filtered, "single_trace.xes"
+        # )
         all_traces_xes = utils.Conversion.dataframe_to_xes(
             all_traces_df_filtered, "all_traces.xes"
         )
 
         # 6. Store XES in session for retrieval in DownloadXesView
-        self.request.session["single_trace_xes"] = str(single_trace_xes)
+        # self.request.session["single_trace_xes"] = str(single_trace_xes)
         self.request.session["all_traces_xes"] = str(all_traces_xes)
 
         return context

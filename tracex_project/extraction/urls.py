@@ -11,4 +11,5 @@ urlpatterns = [
         "extraction/filter/", views.JourneyFilterView.as_view(), name="journey_filter"
     ),
     path("extraction/saved/", views.SaveSuccessView.as_view(), name="save_success"),
+    path("extraction/bulk/", views.BulkJourneyExtraction.as_view(), name="bulk"),
 ]
