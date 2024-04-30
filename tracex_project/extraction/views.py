@@ -12,13 +12,14 @@ from django.views import generic, View
 from django.http import JsonResponse, HttpResponse, FileResponse
 from django.shortcuts import redirect
 
-from tracex.logic import utils
+from tracex.logic import utils, constants
 from extraction.forms import JourneyForm, ResultForm, FilterForm
 from extraction.logic.orchestrator import Orchestrator, ExtractionConfiguration
 from patient_journey_generator.generator import generate_patient_journey
 from extraction.models import PatientJourney
 
 from tracex.logic import constants
+
 
 
 # necessary due to Windows error. see information for your os here:
@@ -134,11 +135,11 @@ class ResultView(generic.FormView):
         """Prepare the data for the result page."""
         context = super().get_context_data(**kwargs)
         orchestrator = Orchestrator.get_instance()
-        single_trace_df = orchestrator.get_data()
-        activity_key = orchestrator.get_configuration().activity_key
+        # single_trace_df = orchestrator.get_data()
+        activity_key = "activity"
         filter_dict = {
-                    "attribute_location": orchestrator.get_configuration().locations,
-                    "concept:name": orchestrator.get_configuration().event_types,
+                    "attribute_location": constants.LOCATIONS,
+                    "concept:name": constants.EVENT_TYPES,
                 }
 
         # 1. Set the filter dictionary based on the activity key
@@ -175,8 +176,9 @@ class ResultView(generic.FormView):
         # condition = Cohort.manager.get(pk=orchestrator.get_db_objects_id("cohort")).condition
         # query = Q(cohort__condition=condition)
         all_traces_df = utils.DataFrameUtilities.get_events_df()
+        print(all_traces_df)
         if not all_traces_df.empty:
-            all_traces_df = utils.Conversion.prepare_df_for_xes_conversion(
+            all_traces_df_filtered = utils.Conversion.prepare_df_for_xes_conversion(
                 all_traces_df, activity_key
             )
             # utils.Conversion.align_df_datatypes(single_trace_df_filtered, all_traces_df)
@@ -185,23 +187,15 @@ class ResultView(generic.FormView):
             #     ignore_index=True,
             #     axis="rows",
             # )
-            all_traces_df_filtered = utils.DataFrameUtilities.filter_dataframe(
-                all_traces_df, filter_dict
-            )
+
+            print(all_traces_df_filtered)
         else:
             all_traces_df_filtered = "single_trace_df_filtered"
 
         # 4. Save all information in context to display on website
         context.update(
             {
-                "form": ResultForm(
-                    initial={
-                        "event_types": orchestrator.get_configuration().event_types,
-                        "locations": orchestrator.get_configuration().locations,
-                        "activity_key": orchestrator.get_configuration().activity_key,
-                    }
-                ),
-                "journey": orchestrator.get_configuration().patient_journey,
+                # "journey": orchestrator.get_configuration().patient_journey,
                 # "dfg_img": utils.Conversion.create_dfg_from_df(
                 #     single_trace_df_filtered
                 # ),
