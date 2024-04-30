@@ -28,15 +28,10 @@ class ExtractionConfiguration:
     event_types: Optional[List[str]] = None
     locations: Optional[List[str]] = None
     modules = {
-        "preprocessing": Preprocessor,
-        "cohort_tagging": CohortTagger,
         "activity_labeling": ActivityLabeler,
         "time_extraction": TimeExtractor,
-        "event_type_classification": EventTypeClassifier,
-        "location_extraction": LocationExtractor,
-        "metrics_analyzer": MetricsAnalyzer,
     }
-    activity_key: Optional[str] = "event_type"
+    activity_key: Optional[str] = "activity"
 
     def update(self, **kwargs):
         """Update the configuration with a dictionary."""
@@ -106,8 +101,6 @@ class Orchestrator:
         modules = [
             self.get_configuration().modules["activity_labeling"](),
             self.get_configuration().modules["time_extraction"](),
-            self.get_configuration().modules["event_type_classification"](),
-            self.get_configuration().modules["location_extraction"](),
             # This module should be activated only if the user wants to analyze the metrics
             # self.get_configuration().modules["metrics_analyzer"](),
         ]
@@ -128,16 +121,16 @@ class Orchestrator:
             )
         patient_journey = ". ".join(patient_journey_sentences)
 
-        self.update_progress(view, current_step, "Cohort Tagger")
-        self.db_objects_id["cohort"] = (
-            self.get_configuration()
-            .modules["cohort_tagging"]()
-            .execute_and_save(
-                self.get_data(),
-                patient_journey=patient_journey,
-                patient_journey_sentences=patient_journey_sentences,
-            )
-        )
+        # self.update_progress(view, current_step, "Cohort Tagger")
+        # self.db_objects_id["cohort"] = (
+        #     self.get_configuration()
+        #     .modules["cohort_tagging"]()
+        #     .execute_and_save(
+        #         self.get_data(),
+        #         patient_journey=patient_journey,
+        #         patient_journey_sentences=patient_journey_sentences,
+        #     )
+        # )
         current_step += 1
         for module in modules:
             self.update_progress(view, current_step, module.name)
@@ -148,6 +141,7 @@ class Orchestrator:
                     patient_journey_sentences=patient_journey_sentences,
                 )
             )
+            print(self.data)
             current_step += 1
 
         if self.get_data() is not None:
@@ -169,18 +163,12 @@ class Orchestrator:
                 Event(
                     trace=trace,
                     activity=row["activity"],
-                    event_type=row["event_type"],
                     start=row["start"],
-                    end=row["end"],
-                    duration=parse_duration(row["duration"]),
-                    location=row["attribute_location"],
                 )
                 for _, row in self.get_data().iterrows()
             ]
         )
         trace.events.set(events)
-        if self.db_objects_id["cohort"] and self.db_objects_id["cohort"] != 0:
-            trace.cohort = Cohort.manager.get(pk=self.db_objects_id["cohort"])
         trace.save()
         patient_journey.trace.add(trace)
         patient_journey.save()

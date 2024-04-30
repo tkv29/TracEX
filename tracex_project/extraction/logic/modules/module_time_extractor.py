@@ -27,9 +27,7 @@ class TimeExtractor(Module):
         super().execute(df, patient_journey=patient_journey, patient_journey_sentences=patient_journey_sentences)
 
         df["start"] = df.apply(self.__extract_start_date, axis=1)
-        df["end"] = df.apply(self.__extract_end_date, axis=1)
         df = self.__post_processing(df)
-        df["duration"] = df.apply(self.__calculate_duration, axis=1)
 
         return df
 
@@ -86,24 +84,11 @@ class TimeExtractor(Module):
     def __post_processing(df):
         """Fill missing values for dates with default values."""
 
-        def fix_end_dates(row):
-            if row["end"] is pd.NaT and row["start"] is not pd.NaT:
-                row["end"] = row["start"]
-
-            return row
-
         converted_start = pd.to_datetime(
             df["start"], format="%Y%m%dT%H%M", errors="coerce"
         )
         mask = converted_start.isna()
         df.loc[mask, "start"] = converted_start
         df["start"] = df["start"].ffill()
-
-        converted_end = pd.to_datetime(df["end"], format="%Y%m%dT%H%M", errors="coerce")
-        mask = converted_end.isna()
-        df.loc[mask, "end"] = converted_end
-        df["end"] = df["end"].ffill()
-
-        df = df.apply(fix_end_dates, axis=1)
 
         return df

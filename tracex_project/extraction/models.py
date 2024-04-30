@@ -54,11 +54,7 @@ class Event(models.Model):
 
     trace = models.ForeignKey(Trace, on_delete=models.CASCADE, related_name="events")
     activity = models.TextField()
-    event_type = models.CharField(max_length=25, choices=EVENT_TYPES)
     start = models.DateTimeField()
-    end = models.DateTimeField()
-    duration = models.DurationField()
-    location = models.CharField(max_length=25, choices=LOCATIONS)
     last_modified = models.DateTimeField(auto_now=True)
     manager = models.Manager()
 

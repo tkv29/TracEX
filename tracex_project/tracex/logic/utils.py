@@ -112,14 +112,11 @@ class Conversion:
         """Ensures that all requirements for the xes conversion are met."""
         df["case_id"] = df["case_id"].astype(str)
         df["start"] = pd.to_datetime(df["start"])
-        df["end"] = pd.to_datetime(df["end"])
         df = df.rename(
             columns={
                 activity_key: "concept:name",
                 "case_id": "case:concept:name",
                 "start": "time:timestamp",
-                "end": "time:end_timestamp",
-                "duration": "time:duration",
             }
         )
 
@@ -208,11 +205,7 @@ class DataFrameUtilities:
                     {
                         "case_id": trace.id,
                         "activity": event.activity,
-                        "event_type": event.event_type,
                         "start": event.start,
-                        "end": event.end,
-                        "duration": event.duration,
-                        "attribute_location": event.location,
                     }
                 )
         events_df = pd.DataFrame(event_data)
